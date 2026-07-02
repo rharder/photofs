@@ -3,8 +3,9 @@
 Command-line tool to mount Apple Photos libraries as a FUSE filesystem.
 
 Usage:
-    mount_photosfs.py /path/to/Photos\ Library.photoslibrary [mountpoint]
+    mount_photosfs [options] [photos_library] [mountpoint]
 
+If photos_library is not specified, the default/active Photos library will be used.
 If mountpoint is not specified or is '-', a mount point will be created
 at the system's default location (/Volumes on macOS, /media on Linux).
 
@@ -14,47 +15,184 @@ created within the specified directory using the library name.
 
 import sys
 import os
+import argparse
 
 from photos_fuse import mount_photosfs, HAS_OSXPHOTOS
 
 
+def find_default_library():
+    """Find the default Photos library path."""
+    try:
+        import osxphotos
+        # Try to get the last opened library
+        lib_path = osxphotos.PhotosLibrary.last_library_path()
+        if lib_path:
+            return lib_path
+    except Exception:
+        pass
+    
+    # Fallback: check default location
+    default_path = os.path.expanduser('~/Pictures/Photos Library.photoslibrary')
+    if os.path.exists(default_path):
+        return default_path
+    
+    # Check for .photoslibrary files in Pictures directory
+    pictures_dir = os.path.expanduser('~/Pictures')
+    if os.path.isdir(pictures_dir):
+        for item in os.listdir(pictures_dir):
+            if item.endswith('.photoslibrary'):
+                return os.path.join(pictures_dir, item)
+    
+    return None
+
+
+def list_available_libraries():
+    """List all available Photos libraries."""
+    libraries = []
+    
+    # Check Pictures directory
+    pictures_dir = os.path.expanduser('~/Pictures')
+    if os.path.isdir(pictures_dir):
+        for item in sorted(os.listdir(pictures_dir)):
+            if item.endswith('.photoslibrary'):
+                libraries.append(os.path.join(pictures_dir, item))
+    
+    # Check other common locations
+    for root, dirs, files in os.walk(os.path.expanduser('~')):
+        # Skip hidden directories and common non-library dirs
+        if '.photoslibrary' in ' '.join(files):
+            for f in files:
+                if f.endswith('.photoslibrary'):
+                    full_path = os.path.join(root, f)
+                    if full_path not in libraries:
+                        libraries.append(full_path)
+    
+    return sorted(libraries)
+
+
 def main():
-    if len(sys.argv) < 2:
-        print('usage: %s photos_library [mountpoint]' % sys.argv[0])
-        print("""
-            Mount an Apple Photos library as a read-only FUSE filesystem.
-
-            Arguments:
-                photos_library    Path to the .photoslibrary file
-                mountpoint        Optional mount point
-
-            If mountpoint is not specified or is '-', a mount point will be
-            created at the system default location (/Volumes on macOS, 
-            /media on Linux) using the library name.
-
-            If mountpoint begins with a dash (e.g., -./mount), a mount point
-            will be created within the specified directory using the library name.
-
-            Example:
-                mount_photosfs.py ~/Pictures/Photos\ Library.photoslibrary
-                mount_photosfs.py ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
-                mount_photosfs.py ~/Pictures/Photos\ Library.photoslibrary -.
-        """)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description='Mount an Apple Photos library as a read-only FUSE filesystem',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  mount_photosfs                           # Mount default library
+  mount_photosfs --default                # Mount default library
+  mount_photosfs ~/Pictures/MyLibrary.photoslibrary
+  mount_photosfs ~/Pictures/MyLibrary.photoslibrary /mnt/photos
+  mount_photosfs --list                   # List available libraries
+  mount_photosfs -v ~/Pictures/MyLibrary.photoslibrary  # Verbose
+        """
+    )
+    
+    parser.add_argument(
+        'library',
+        nargs='?',
+        default=None,
+        help='Path to the .photoslibrary file (defaults to active library)'
+    )
+    
+    parser.add_argument(
+        'mountpoint',
+        nargs='?',
+        default=None,
+        help='Mount point directory (defaults to /Volumes/LibraryName on macOS, /media/LibraryName on Linux)'
+    )
+    
+    parser.add_argument(
+        '-d', '--default',
+        action='store_true',
+        help='Use the default/active Photos library'
+    )
+    
+    parser.add_argument(
+        '-l', '--list',
+        action='store_true',
+        help='List available Photos libraries and exit'
+    )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Enable verbose logging'
+    )
+    
+    parser.add_argument(
+        '-q', '--quiet',
+        action='store_true',
+        help='Disable verbose logging'
+    )
+    
+    parser.add_argument(
+        '-f', '--foreground',
+        action='store_true',
+        default=True,
+        help='Run in foreground (default)'
+    )
+    
+    parser.add_argument(
+        '-b', '--background',
+        action='store_false',
+        dest='foreground',
+        help='Run in background'
+    )
+    
+    args = parser.parse_args()
     
     if not HAS_OSXPHOTOS:
         print("Error: osxphotos library is required.")
         print("Install with: pip install osxphotos")
         sys.exit(1)
     
-    library_path = sys.argv[1]
+    # Handle --list
+    if args.list:
+        libraries = list_available_libraries()
+        if libraries:
+            print("Available Photos libraries:")
+            for lib in libraries:
+                print(f"  {lib}")
+            
+            # Mark default
+            default_lib = find_default_library()
+            if default_lib:
+                print(f"\nDefault library: {default_lib}")
+        else:
+            print("No Photos libraries found.")
+        sys.exit(0)
     
-    if len(sys.argv) > 2:
-        mount = sys.argv[2]
+    # Determine library path
+    if args.default or args.library is None:
+        library_path = find_default_library()
+        if library_path is None:
+            libraries = list_available_libraries()
+            if libraries:
+                print(f"No default library found. Available libraries:")
+                for lib in libraries:
+                    print(f"  {lib}")
+                print("\nUse --list to see all available libraries, or specify a path.")
+                sys.exit(1)
+            else:
+                print("Error: No Photos libraries found.")
+                sys.exit(1)
     else:
-        mount = None
+        library_path = args.library
     
-    mount_photosfs(library_path, mount, foreground=True, verbose=True)
+    # Validate library path
+    if not os.path.exists(library_path):
+        print(f"Error: Photos library not found: {library_path}")
+        sys.exit(1)
+    
+    if not library_path.endswith('.photoslibrary'):
+        print(f"Error: Path does not appear to be a Photos library: {library_path}")
+        sys.exit(1)
+    
+    # Determine mount point
+    mount = args.mountpoint
+    
+    # Set verbose flag
+    verbose = args.verbose and not args.quiet
+    
+    mount_photosfs(library_path, mount, foreground=args.foreground, verbose=verbose)
 
 
 if __name__ == '__main__':

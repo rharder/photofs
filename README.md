@@ -7,7 +7,13 @@ Mount your Apple Photos library as a read-only filesystem using FUSE. This allow
 - Mount Photos libraries as a navigable directory structure
 - Access photos organized by Albums and Folders
 - Flat Media view for all original files
-- Read-only to protect your library
+- **Browse by Faces** - Photos grouped by recognized people
+- **Browse by Locations** - Photos grouped by geographic location
+- **Browse by Keywords** - Photos grouped by tags/keywords
+- **Browse by Date** - Photos grouped by year and month
+- **Absolute read-only protection** - All write operations are blocked at the filesystem level
+- **Multiple library support** - Auto-detect and mount any Photos library
+- Caching for better performance with large libraries
 - Cross-platform (macOS, Linux, FreeBSD)
 
 ## Installation
@@ -38,7 +44,10 @@ pip install photosfs
 ## Usage
 
 ```bash
-# Basic mount with auto-created mount point
+# Mount the default/active Photos library
+mount_photosfs
+
+# Mount a specific library
 mount_photosfs ~/Pictures/Photos\ Library.photoslibrary
 
 # Mount to a specific location
@@ -46,6 +55,15 @@ mount_photosfs ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
 
 # Mount in current directory
 mount_photosfs ~/Pictures/Photos\ Library.photoslibrary -.
+
+# List all available Photos libraries
+mount_photosfs --list
+
+# Verbose output
+mount_photosfs -v ~/Pictures/Photos\ Library.photoslibrary
+
+# Run in background
+mount_photosfs -b ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
 
 # Unmount (standard FUSE command)
 fusermount -u /mnt/photos  # Linux
@@ -70,10 +88,55 @@ When mounted, your Photos library will appear as:
 │       └── Europe 2023/
 │           ├── IMG_0100.JPG
 │           └── ...
-└── Media/               # All media files (flat)
-    ├── IMG_0001.JPG
-    ├── IMG_0002.JPG
-    └── ...
+├── Media/               # All media files (flat)
+│   ├── IMG_0001.JPG
+│   ├── IMG_0002.JPG
+│   └── ...
+├── Faces/               # Photos grouped by recognized people
+│   ├── John Doe/
+│   │   ├── IMG_0001.JPG
+│   │   └── ...
+│   └── Jane Smith/
+│       └── ...
+├── Locations/           # Photos grouped by geographic location
+│   ├── Paris, France/
+│   │   ├── IMG_0100.JPG
+│   │   └── ...
+│   └── New York, NY/
+│       └── ...
+├── Keywords/            # Photos grouped by tags/keywords
+│   ├── Beach/
+│   │   ├── IMG_0200.JPG
+│   │   └── ...
+│   └── Sunset/
+│       └── ...
+└── By Date/             # Photos grouped by date (year/month)
+    ├── 2024/
+    │   ├── January/
+    │   │   ├── IMG_0300.JPG
+    │   │   └── ...
+    │   └── February/
+    │       └── ...
+    └── 2023/
+        └── ...
+```
+
+## Command Line Options
+
+```bash
+mount_photosfs [OPTIONS] [LIBRARY_PATH] [MOUNTPOINT]
+
+Options:
+  -d, --default    Use the default/active Photos library
+  -l, --list       List available Photos libraries and exit
+  -v, --verbose    Enable verbose logging
+  -q, --quiet      Disable verbose logging
+  -f, --foreground Run in foreground (default)
+  -b, --background  Run in background
+
+Arguments:
+  LIBRARY_PATH     Path to the .photoslibrary file (defaults to active library)
+  MOUNTPOINT       Mount point directory (defaults to /Volumes/LibraryName on macOS)
 ```
 
 ## Project Structure
