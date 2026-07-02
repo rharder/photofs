@@ -1,4 +1,4 @@
-# photosfs: Apple Photos Library FUSE Filesystem
+# photofs: Apple Photos Library FUSE Filesystem
 
 Mount your Apple Photos library as a read-only filesystem using FUSE. This allows you to browse and access your Photos library content through standard filesystem operations.
 
@@ -20,14 +20,14 @@ Mount your Apple Photos library as a read-only filesystem using FUSE. This allow
 
 ```bash
 # Clone the repository
-git clone https://github.com/rharder/photosfs.git
-cd photosfs
+git clone https://github.com/rharder/photofs.git
+cd photofs
 
 # Install in development mode
 pip install -e .
 
 # Or install from PyPI (when published)
-pip install photosfs
+pip install photofs
 ```
 
 ## Requirements
@@ -45,25 +45,25 @@ pip install photosfs
 
 ```bash
 # Mount the default/active Photos library
-mount_photosfs
+mount_photos
 
 # Mount a specific library
-mount_photosfs ~/Pictures/Photos\ Library.photoslibrary
+mount_photos ~/Pictures/Photos\ Library.photoslibrary
 
 # Mount to a specific location
-mount_photosfs ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
+mount_photos ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
 
 # Mount in current directory
-mount_photosfs ~/Pictures/Photos\ Library.photoslibrary -.
+mount_photos ~/Pictures/Photos\ Library.photoslibrary -.
 
 # List all available Photos libraries
-mount_photosfs --list
+mount_photos --list
 
 # Verbose output
-mount_photosfs -v ~/Pictures/Photos\ Library.photoslibrary
+mount_photos -v ~/Pictures/Photos\ Library.photoslibrary
 
 # Run in background
-mount_photosfs -b ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
+mount_photos -b ~/Pictures/Photos\ Library.photoslibrary /mnt/photos
 
 # Unmount (standard FUSE command)
 fusermount -u /mnt/photos  # Linux
@@ -124,7 +124,7 @@ When mounted, your Photos library will appear as:
 ## Command Line Options
 
 ```bash
-mount_photosfs [OPTIONS] [LIBRARY_PATH] [MOUNTPOINT]
+mount_photos [OPTIONS] [LIBRARY_PATH] [MOUNTPOINT]
 
 Options:
   -d, --default    Use the default/active Photos library
@@ -142,11 +142,11 @@ Arguments:
 ## Project Structure
 
 ```
-photosfs/
-├── photosfs/
+photofs/
+├── photofs/
 │   ├── __init__.py
-│   ├── photos_fuse.py    # FUSE filesystem implementation
-│   └── mount_photosfs.py # CLI entry point
+│   ├── photofs_fuse.py    # FUSE filesystem implementation
+│   └── mount_photos.py    # CLI entry point
 ├── setup.py
 ├── README.md
 └── requirements.txt
@@ -166,8 +166,8 @@ python -m pytest
 
 This project is the successor to [pyphotofs](https://github.com/rharder/pyphotofs), which supported iPhoto libraries. The key differences:
 
-| Feature | pyphotofs | photosfs |
-|---------|-----------|----------|
+| Feature | pyphotofs | photofs |
+|---------|-----------|---------|
 | Library format | iPhoto (AlbumData.xml) | Photos.app (SQLite) |
 | Backend library | plistlib | osxphotos |
 | Metadata access | Basic | Full (faces, persons, keywords, etc.) |

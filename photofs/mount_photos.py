@@ -3,7 +3,7 @@
 Command-line tool to mount Apple Photos libraries as a FUSE filesystem.
 
 Usage:
-    mount_photosfs [options] [photos_library] [mountpoint]
+    mount_photos [options] [photos_library] [mountpoint]
 
 If photos_library is not specified, the default/active Photos library will be used.
 If mountpoint is not specified or is '-', a mount point will be created
@@ -17,7 +17,7 @@ import sys
 import os
 import argparse
 
-from photos_fuse import mount_photosfs, HAS_OSXPHOTOS
+from photofs_fuse import mount_photos, HAS_OSXPHOTOS
 
 
 def find_default_library():
@@ -76,12 +76,12 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  mount_photosfs                           # Mount default library
-  mount_photosfs --default                # Mount default library
-  mount_photosfs ~/Pictures/MyLibrary.photoslibrary
-  mount_photosfs ~/Pictures/MyLibrary.photoslibrary /mnt/photos
-  mount_photosfs --list                   # List available libraries
-  mount_photosfs -v ~/Pictures/MyLibrary.photoslibrary  # Verbose
+  mount_photos                           # Mount default library
+  mount_photos --default                # Mount default library
+  mount_photos ~/Pictures/MyLibrary.photoslibrary
+  mount_photos ~/Pictures/MyLibrary.photoslibrary /mnt/photos
+  mount_photos --list                   # List available libraries
+  mount_photos -v ~/Pictures/MyLibrary.photoslibrary  # Verbose
         """
     )
     
@@ -192,7 +192,7 @@ Examples:
     # Set verbose flag
     verbose = args.verbose and not args.quiet
     
-    mount_photosfs(library_path, mount, foreground=args.foreground, verbose=verbose)
+    mount_photos(library_path, mount, foreground=args.foreground, verbose=verbose)
 
 
 if __name__ == '__main__':

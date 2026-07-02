@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='photosfs',
+    name='photofs',
     version='0.1',
     description='Mount Apple Photos libraries as a FUSE filesystem',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Robert Harder',
     author_email='rob@iharder.net',
-    url='https://github.com/rharder/photosfs',
+    url='https://github.com/rharder/photofs',
     packages=find_packages(),
     install_requires=[
         'fusepy>=3.0',
@@ -16,7 +16,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'mount_photosfs=photosfs.mount_photosfs:main',
+            'mount_photos=photofs.mount_photos:main',
         ],
     },
     classifiers=[

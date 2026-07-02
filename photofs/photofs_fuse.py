@@ -797,7 +797,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
         return None
 
 
-def mount_photosfs(library_path, mount=None, foreground=True, verbose=False):
+def mount_photos(library_path, mount=None, foreground=True, verbose=False):
     """
     Mount a Photos library as a FUSE filesystem.
     
