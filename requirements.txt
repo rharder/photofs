@@ -1,0 +1,7 @@
+# Core dependencies
+fusepy>=3.0.0
+osxphotos>=0.30.0
+
+# Development dependencies
+# pytest
+# pytest-cov
