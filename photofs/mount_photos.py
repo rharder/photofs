@@ -17,7 +17,7 @@ import sys
 import os
 import argparse
 
-from photofs_fuse import mount_photos, HAS_OSXPHOTOS
+from photofs.photofs_fuse import mount_photos, HAS_OSXPHOTOS
 
 
 def find_default_library():
