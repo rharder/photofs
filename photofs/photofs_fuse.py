@@ -101,14 +101,14 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
     setxattr = _read_only_error
     removexattr = _read_only_error
     
-    def __init__(self, photos_library, verbose=False):
+    def __init__(self, photos_db, verbose=False):
         """
         Initialize the FUSE filesystem with a Photos library.
         
-        :param photos_library: osxphotos.PhotosLibrary instance
+        :param photos_db: osxphotos.PhotosDB instance
         :param verbose: Enable verbose logging
         """
-        self._library = photos_library
+        self._library = photos_db
         self.rwlock = Lock()
         self.verbose = verbose
         self._file_handles = {}
@@ -127,7 +127,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
     
     @property
     def library(self):
-        """Returns the osxphotos PhotosLibrary instance."""
+        """Returns the osxphotos PhotosDB instance."""
         return self._library
     
     def _build_caches(self):
@@ -813,7 +813,7 @@ def mount_photos(library_path, mount=None, foreground=True, verbose=False):
     
     # Load the Photos library
     try:
-        photos_library = osxphotos.PhotosLibrary(library_path)
+        photos_db = osxphotos.PhotosDB(library_path)
     except Exception as e:
         print(f"Error loading Photos library: {e}")
         sys.exit(1)
@@ -861,7 +861,7 @@ def mount_photos(library_path, mount=None, foreground=True, verbose=False):
     
     # Create and mount the FUSE filesystem
     fuse = FUSE(
-        PhotosFUSEFS(photos_library, verbose=verbose),
+        PhotosFUSEFS(photos_db, verbose=verbose),
         mount,
         nothreads=False,
         foreground=foreground,

@@ -22,16 +22,7 @@ from photofs.photofs_fuse import mount_photos, HAS_OSXPHOTOS
 
 def find_default_library():
     """Find the default Photos library path."""
-    try:
-        import osxphotos
-        # Try to get the last opened library
-        lib_path = osxphotos.PhotosLibrary.last_library_path()
-        if lib_path:
-            return lib_path
-    except Exception:
-        pass
-    
-    # Fallback: check default location
+    # Check default location first
     default_path = os.path.expanduser('~/Pictures/Photos Library.photoslibrary')
     if os.path.exists(default_path):
         return default_path
@@ -42,6 +33,14 @@ def find_default_library():
         for item in os.listdir(pictures_dir):
             if item.endswith('.photoslibrary'):
                 return os.path.join(pictures_dir, item)
+    
+    # Try using osxphotos to find the last opened library
+    try:
+        import osxphotos
+        db = osxphotos.PhotosDB()
+        return db.dbfile
+    except Exception:
+        pass
     
     return None
 
@@ -57,15 +56,25 @@ def list_available_libraries():
             if item.endswith('.photoslibrary'):
                 libraries.append(os.path.join(pictures_dir, item))
     
-    # Check other common locations
-    for root, dirs, files in os.walk(os.path.expanduser('~')):
-        # Skip hidden directories and common non-library dirs
-        if '.photoslibrary' in ' '.join(files):
-            for f in files:
-                if f.endswith('.photoslibrary'):
-                    full_path = os.path.join(root, f)
-                    if full_path not in libraries:
-                        libraries.append(full_path)
+    # Check Documents directory for any .photoslibrary files
+    docs_dir = os.path.expanduser('~/Documents')
+    if os.path.isdir(docs_dir):
+        for item in sorted(os.listdir(docs_dir)):
+            if item.endswith('.photoslibrary'):
+                full_path = os.path.join(docs_dir, item)
+                if full_path not in libraries:
+                    libraries.append(full_path)
+    
+    # Check one level deeper in Pictures (for subdirectories)
+    if os.path.isdir(pictures_dir):
+        for item in sorted(os.listdir(pictures_dir)):
+            item_path = os.path.join(pictures_dir, item)
+            if os.path.isdir(item_path):
+                for subitem in sorted(os.listdir(item_path)):
+                    if subitem.endswith('.photoslibrary'):
+                        full_path = os.path.join(item_path, subitem)
+                        if full_path not in libraries:
+                            libraries.append(full_path)
     
     return sorted(libraries)
 
@@ -144,7 +153,7 @@ Examples:
         print("Install with: pip install osxphotos")
         sys.exit(1)
     
-    # Handle --list
+    # Handle --list (takes precedence over other arguments)
     if args.list:
         libraries = list_available_libraries()
         if libraries:
