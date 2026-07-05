@@ -201,6 +201,11 @@ Examples:
     # Set verbose flag
     verbose = args.verbose and not args.quiet
     
+    # Print loading message
+    if verbose:
+        print(f"Loading Photos library: {library_path}")
+        print("This may take a while for large libraries (database size matters, not photo count)...")
+    
     mount_photos(library_path, mount, foreground=args.foreground, verbose=verbose)
 
 

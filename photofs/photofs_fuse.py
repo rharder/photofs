@@ -122,8 +122,12 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
             'by_date': None,    # Dict: (year, month) -> list of photos
         }
         
-        # Pre-compute caches
+        # Pre-compute caches (can take a while for large libraries)
+        if self.verbose:
+            print("Building caches (this may take a while for large libraries)...")
         self._build_caches()
+        if self.verbose:
+            print("Caches built.")
     
     @property
     def library(self):
@@ -812,11 +816,16 @@ def mount_photos(library_path, mount=None, foreground=True, verbose=False):
         sys.exit(1)
     
     # Load the Photos library
+    if verbose:
+        print(f"Loading Photos library from: {library_path}")
+        print("This may take a while for large libraries...")
     try:
         photos_db = osxphotos.PhotosDB(library_path)
     except Exception as e:
         print(f"Error loading Photos library: {e}")
         sys.exit(1)
+    if verbose:
+        print(f"Loaded {len(photos_db.photos)} photos, {len(photos_db.albums)} albums")
     
     def remove_mount(mount_path):
         """Clean up mount point on exit."""
