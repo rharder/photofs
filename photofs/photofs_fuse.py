@@ -144,7 +144,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
         keywords_cache = defaultdict(list)
         by_date_cache = defaultdict(list)
         
-        for photo in self._library.photos:
+        for photo in self._library.photos():
             # Cache by faces
             if hasattr(photo, 'person_info') and photo.person_info:
                 for person in photo.person_info:
@@ -285,7 +285,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
                 album = self._find_album_by_name(top_level)
                 if album:
                     st = dict(st_mode=(S_IFDIR | self._CHMOD_DIR), 
-                              st_nlink=2 + len(list(album.photos)))
+                              st_nlink=2 + len(album.photos))
                     return self.add_uid_gid_pid(st)
                 raise FuseOSError(ENOENT)
         
@@ -297,7 +297,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
                 album = self._find_album_by_name(parts[1])
                 if album:
                     st = dict(st_mode=(S_IFDIR | self._CHMOD_DIR), 
-                              st_nlink=2 + len(list(album.photos)))
+                              st_nlink=2 + len(album.photos))
                     return self.add_uid_gid_pid(st)
                 raise FuseOSError(ENOENT)
             elif len(parts) == 3:
@@ -323,7 +323,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
                 folder = self._find_folder_by_name(folder_name)
                 if folder:
                     st = dict(st_mode=(S_IFDIR | self._CHMOD_DIR), 
-                              st_nlink=2 + len(folder.albums))
+                              st_nlink=2 + len(folder.album_info))
                     return self.add_uid_gid_pid(st)
                 raise FuseOSError(ENOENT)
             elif len(parts) == 3:
@@ -334,7 +334,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
                     album = self._find_album_in_folder(folder, album_name)
                     if album:
                         st = dict(st_mode=(S_IFDIR | self._CHMOD_DIR), 
-                                  st_nlink=2 + len(list(album.photos)))
+                                  st_nlink=2 + len(album.photos))
                         return self.add_uid_gid_pid(st)
                 raise FuseOSError(ENOENT)
             elif len(parts) == 4:
@@ -497,21 +497,21 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
         if path == '/':
             entries.extend(['Albums', 'Folders', 'Media'])
             # Also add top-level albums (not in folders)
-            for album in self._library.albums:
-                if album.folder is None:
-                    entries.append(album.name)
+            for album in self._library.album_info:
+                if not album.folder_names:
+                    entries.append(album.title)
         
         elif path == '/Albums':
-            for album in self._library.albums:
-                if album.folder is None:
-                    entries.append(album.name)
+            for album in self._library.album_info:
+                if not album.folder_names:
+                    entries.append(album.title)
         
         elif path == '/Folders':
-            for folder in self._library.folders:
+            for folder in self._library.folder_info:
                 entries.append(folder.name)
         
         elif path == '/Media':
-            for photo in self._library.photos:
+            for photo in self._library.photos():
                 entries.append(os.path.basename(photo.path))
         
         elif path == '/Faces':
@@ -609,8 +609,8 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
                 folder_name = parts[1]
                 folder = self._find_folder_by_name(folder_name)
                 if folder:
-                    for album in folder.albums:
-                        entries.append(album.name)
+                    for album in folder.album_info:
+                        entries.append(album.title)
             elif len(parts) == 3:
                 # /Folders/FolderName/AlbumName - list photos in this album
                 folder_name, album_name = parts[1], parts[2]
@@ -727,22 +727,24 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
     
     def _find_album_by_name(self, name):
         """Find an album by name (top-level, not in a folder)."""
-        for album in self._library.albums:
-            if album.name == name and album.folder is None:
+        for album in self._library.album_info:
+            if album.title == name and not album.folder_names:
                 return album
         return None
     
     def _find_folder_by_name(self, name):
         """Find a folder by name."""
-        for folder in self._library.folders:
+        for folder in self._library.folder_info:
             if folder.name == name:
                 return folder
         return None
     
     def _find_album_in_folder(self, folder, name):
         """Find an album within a specific folder."""
-        for album in folder.albums:
-            if album.name == name:
+        # folder is a FolderInfo object which has a list of album names or album_info
+        # Need to check the actual API
+        for album in self._library.album_info:
+            if album.title == name and folder.name in album.folder_names:
                 return album
         return None
     
@@ -755,7 +757,7 @@ class PhotosFUSEFS(LoggingMixIn, Operations):
     
     def _find_photo_by_filename(self, filename):
         """Find a photo in the entire library by filename."""
-        for photo in self._library.photos:
+        for photo in self._library.photos():
             if os.path.basename(photo.path) == filename:
                 return photo
         return None
@@ -825,7 +827,9 @@ def mount_photos(library_path, mount=None, foreground=True, verbose=False):
         print(f"Error loading Photos library: {e}")
         sys.exit(1)
     if verbose:
-        print(f"Loaded {len(photos_db.photos)} photos, {len(photos_db.albums)} albums")
+        photos_count = len(list(photos_db.photos())) if callable(photos_db.photos) else len(photos_db.photos)
+        albums_count = len(photos_db.albums) if isinstance(photos_db.albums, list) else len(list(photos_db.albums()))
+        print(f"Loaded {photos_count} photos, {albums_count} albums")
     
     def remove_mount(mount_path):
         """Clean up mount point on exit."""
@@ -839,7 +843,8 @@ def mount_photos(library_path, mount=None, foreground=True, verbose=False):
     
     this_system = system()
     if this_system == 'Darwin':
-        preferred_mount = '/Volumes'
+        # On macOS, use /tmp which is user-writable, not /Volumes (system only)
+        preferred_mount = '/tmp/photofs_mounts'
     elif this_system == 'Linux':
         preferred_mount = '/media'
     else:
